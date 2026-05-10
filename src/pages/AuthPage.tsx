@@ -1,262 +1,197 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { api } from '@/lib/api';
-import { saveAuth } from '@/lib/auth';
-import Icon from '@/components/ui/icon';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { api } from "@/lib/api";
+import { saveAuth } from "@/lib/auth";
+import Icon from "@/components/ui/icon";
 
-type Tab = 'login' | 'register';
-
-const AuthPage: React.FC = () => {
+export default function AuthPage() {
   const navigate = useNavigate();
-  const [tab, setTab] = useState<Tab>('login');
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<"login" | "register">("login");
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [tgStep, setTgStep] = useState(false);
+  const [tgCode, setTgCode] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
-
-    if (!username.trim() || !password.trim()) {
-      setError('Пожалуйста, заполните все поля');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const data =
-        tab === 'login'
-          ? await api.auth.login(username.trim(), password)
-          : await api.auth.register(username.trim(), password);
-
-      if (data.error || data.detail) {
-        setError(data.error || data.detail || 'Произошла ошибка');
-        return;
-      }
-
-      saveAuth(data);
-      navigate('/');
-    } catch {
-      setError('Ошибка соединения с сервером');
-    } finally {
-      setLoading(false);
-    }
+  const handleSubmit = async () => {
+    if (!username.trim() || !password) { setError("Заполните все поля"); return; }
+    if (password.length < 6) { setError("Пароль минимум 6 символов"); return; }
+    setError("");
+    setTgStep(true);
   };
 
-  const handleTabSwitch = (newTab: Tab) => {
-    setTab(newTab);
-    setError('');
-    setUsername('');
-    setPassword('');
+  const handleConfirm = async () => {
+    if (tgCode.length < 3) { setError("Введите код из Telegram"); return; }
+    setLoading(true);
+    setError("");
+    try {
+      const fn = mode === "register" ? api.auth.register : api.auth.login;
+      const data = await fn(username.trim(), password);
+      if (data.error) { setError(data.error); setLoading(false); return; }
+      saveAuth(data);
+      navigate("/");
+    } catch {
+      setError("Ошибка соединения. Попробуйте снова.");
+    }
+    setLoading(false);
   };
 
   return (
-    <div
-      className="min-h-screen grid-bg flex items-center justify-center p-4"
-      style={{ background: 'var(--dark-bg)' }}
-    >
-      {/* Ambient blobs */}
-      <div className="pointer-events-none fixed inset-0 overflow-hidden">
-        <div
-          className="absolute -top-40 -left-40 w-96 h-96 rounded-full opacity-10 blur-3xl"
-          style={{ background: 'var(--neon-green)' }}
-        />
-        <div
-          className="absolute -bottom-40 -right-40 w-96 h-96 rounded-full opacity-10 blur-3xl"
-          style={{ background: 'var(--neon-purple)' }}
-        />
-      </div>
+    <div className="min-h-screen grid-bg flex items-center justify-center p-4 relative overflow-hidden">
+      <div
+        className="absolute inset-0 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at 50% 30%, rgba(34,214,90,0.07) 0%, transparent 65%)" }}
+      />
+      <div
+        className="absolute bottom-0 left-0 right-0 h-64 pointer-events-none"
+        style={{ background: "radial-gradient(ellipse at 50% 100%, rgba(168,85,247,0.07) 0%, transparent 70%)" }}
+      />
 
-      <div className="w-full max-w-md animate-fade-in relative z-10">
+      <div className="w-full max-w-md animate-scale-in relative z-10">
         {/* Logo */}
         <div className="text-center mb-8">
           <div
-            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 neon-glow-green animate-pulse-glow"
-            style={{ background: 'rgba(34,214,90,0.1)', border: '1px solid var(--neon-green)' }}
+            className="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 animate-pulse-glow"
+            style={{ background: "linear-gradient(135deg, #22d65a, #16a34a)" }}
           >
-            <Icon name="Zap" size={40} style={{ color: 'var(--neon-green)' }} />
+            <span className="text-3xl font-oswald font-black text-black">N</span>
           </div>
-          <h1
-            className="text-5xl font-bold tracking-widest"
-            style={{ color: 'var(--neon-green)', textShadow: '0 0 30px rgba(34,214,90,0.6)' }}
-          >
-            CASINO
-          </h1>
-          <p className="mt-2 text-sm font-semibold" style={{ color: 'var(--neon-gold)' }}>
-            🎁 100 ₽ бонус при регистрации!
-          </p>
+          <h1 className="text-5xl font-oswald font-black text-white tracking-widest">NEXUS</h1>
+          <p className="text-muted-foreground text-sm mt-1">Игровая платформа нового поколения</p>
         </div>
 
-        {/* Card */}
-        <div
-          className="glass-card rounded-2xl p-8"
-          style={{ boxShadow: '0 0 40px rgba(34,214,90,0.08)' }}
-        >
-          {/* Tabs */}
-          <div
-            className="flex rounded-xl p-1 mb-8"
-            style={{ background: 'rgba(255,255,255,0.04)' }}
-          >
-            {(['login', 'register'] as Tab[]).map((t) => (
-              <button
-                key={t}
-                onClick={() => handleTabSwitch(t)}
-                className="flex-1 py-2.5 rounded-lg text-sm font-semibold transition-all duration-200"
-                style={
-                  tab === t
-                    ? {
-                        background: 'var(--neon-green)',
-                        color: '#000',
-                        boxShadow: '0 0 16px rgba(34,214,90,0.4)',
-                      }
-                    : { color: 'rgba(255,255,255,0.5)' }
-                }
-              >
-                {t === 'login' ? 'Войти' : 'Регистрация'}
-              </button>
-            ))}
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-5">
-            {/* Username */}
-            <div>
-              <label
-                className="block text-xs font-semibold mb-2 uppercase tracking-wider"
-                style={{ color: 'rgba(255,255,255,0.5)' }}
-              >
-                Имя пользователя
-              </label>
-              <div className="relative">
-                <span
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--neon-green)' }}
-                >
-                  <Icon name="User" size={18} />
-                </span>
-                <input
-                  type="text"
-                  value={username}
-                  onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Введите имя пользователя"
-                  autoComplete="username"
-                  className="w-full rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition-all duration-200 placeholder-gray-600"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid var(--card-border)',
-                    color: '#fff',
-                  }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = 'var(--neon-green)')
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = 'var(--card-border)')
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Password */}
-            <div>
-              <label
-                className="block text-xs font-semibold mb-2 uppercase tracking-wider"
-                style={{ color: 'rgba(255,255,255,0.5)' }}
-              >
-                Пароль
-              </label>
-              <div className="relative">
-                <span
-                  className="absolute left-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--neon-green)' }}
-                >
-                  <Icon name="Lock" size={18} />
-                </span>
-                <input
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Введите пароль"
-                  autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
-                  className="w-full rounded-xl pl-10 pr-4 py-3 text-sm outline-none transition-all duration-200 placeholder-gray-600"
-                  style={{
-                    background: 'rgba(255,255,255,0.04)',
-                    border: '1px solid var(--card-border)',
-                    color: '#fff',
-                  }}
-                  onFocus={(e) =>
-                    (e.currentTarget.style.borderColor = 'var(--neon-green)')
-                  }
-                  onBlur={(e) =>
-                    (e.currentTarget.style.borderColor = 'var(--card-border)')
-                  }
-                />
-              </div>
-            </div>
-
-            {/* Error */}
-            {error && (
+        <div className="glass-card rounded-2xl p-6">
+          {!tgStep ? (
+            <>
+              {/* Tabs */}
               <div
-                className="flex items-center gap-2 rounded-xl px-4 py-3 text-sm animate-fade-in"
-                style={{
-                  background: 'rgba(239,68,68,0.1)',
-                  border: '1px solid rgba(239,68,68,0.3)',
-                  color: '#f87171',
-                }}
+                className="flex rounded-xl overflow-hidden mb-6"
+                style={{ background: "rgba(255,255,255,0.05)" }}
               >
-                <Icon name="AlertCircle" size={16} />
-                {error}
+                {(["login", "register"] as const).map((m) => (
+                  <button
+                    key={m}
+                    onClick={() => { setMode(m); setError(""); }}
+                    className="flex-1 py-2.5 text-sm font-bold transition-all duration-300 rounded-xl"
+                    style={
+                      mode === m
+                        ? { background: "linear-gradient(135deg,#22d65a,#16a34a)", color: "#000" }
+                        : { color: "hsl(var(--muted-foreground))" }
+                    }
+                  >
+                    {m === "login" ? "Войти" : "Регистрация"}
+                  </button>
+                ))}
               </div>
-            )}
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              className="w-full py-3.5 rounded-xl font-bold text-sm uppercase tracking-wider transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed"
-              style={{
-                background: loading
-                  ? 'rgba(34,214,90,0.4)'
-                  : 'var(--neon-green)',
-                color: '#000',
-                boxShadow: loading ? 'none' : '0 0 24px rgba(34,214,90,0.5)',
-              }}
-            >
-              {loading ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Icon name="Loader2" size={16} className="animate-spin" />
-                  {tab === 'login' ? 'Вход...' : 'Регистрация...'}
-                </span>
-              ) : tab === 'login' ? (
-                'Войти'
-              ) : (
-                'Зарегистрироваться'
+              {/* Bonus hint on register */}
+              {mode === "register" && (
+                <div
+                  className="flex items-center gap-3 p-3 rounded-xl mb-4"
+                  style={{ background: "rgba(34,214,90,0.08)", border: "1px solid rgba(34,214,90,0.2)" }}
+                >
+                  <span className="text-xl">🎁</span>
+                  <p className="text-sm font-semibold text-neon-green">+100 ₽ бонус при регистрации!</p>
+                </div>
               )}
-            </button>
-          </form>
 
-          {/* Footer note */}
-          <p className="mt-6 text-center text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>
-            {tab === 'login'
-              ? 'Нет аккаунта? '
-              : 'Уже есть аккаунт? '}
-            <button
-              onClick={() => handleTabSwitch(tab === 'login' ? 'register' : 'login')}
-              className="underline transition-colors"
-              style={{ color: 'var(--neon-green)' }}
-            >
-              {tab === 'login' ? 'Зарегистрируйтесь' : 'Войдите'}
-            </button>
-          </p>
+              {/* Telegram notice */}
+              <div
+                className="flex items-center gap-3 p-3 rounded-xl mb-5"
+                style={{ background: "rgba(59,130,246,0.08)", border: "1px solid rgba(59,130,246,0.18)" }}
+              >
+                <span className="text-xl">✈️</span>
+                <div>
+                  <p className="text-xs font-semibold text-blue-400">Авторизация через Telegram</p>
+                  <p className="text-xs text-muted-foreground">
+                    Запустите <span className="text-blue-400">@nexus_game_bot</span> для подтверждения
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">Логин</label>
+                  <input
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
+                    placeholder="Введите логин"
+                    autoComplete="username"
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-all placeholder:text-gray-600"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    onFocus={(e) => (e.target.style.borderColor = "rgba(34,214,90,0.5)")}
+                    onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+                  />
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1.5 block">Пароль</label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Минимум 6 символов"
+                    autoComplete={mode === "register" ? "new-password" : "current-password"}
+                    className="w-full px-4 py-3 rounded-xl text-sm text-white outline-none transition-all placeholder:text-gray-600"
+                    style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.08)" }}
+                    onFocus={(e) => (e.target.style.borderColor = "rgba(34,214,90,0.5)")}
+                    onBlur={(e) => (e.target.style.borderColor = "rgba(255,255,255,0.08)")}
+                    onKeyDown={(e) => e.key === "Enter" && handleSubmit()}
+                  />
+                </div>
+              </div>
+
+              {error && <p className="text-red-400 text-xs mt-3">{error}</p>}
+
+              <button
+                onClick={handleSubmit}
+                className="w-full mt-5 py-3.5 rounded-xl font-bold text-black text-sm transition-all duration-300 hover:scale-[1.02] active:scale-[0.98]"
+                style={{ background: "linear-gradient(135deg,#22d65a,#16a34a)" }}
+              >
+                {mode === "login" ? "Войти" : "Создать аккаунт"} →
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="text-center mb-6">
+                <span className="text-5xl block mb-3 animate-float">✈️</span>
+                <h3 className="text-white font-oswald text-xl">Подтверди в Telegram</h3>
+                <p className="text-muted-foreground text-sm mt-1">
+                  Открой <span className="text-blue-400">@nexus_game_bot</span> и введи код
+                </p>
+              </div>
+              <input
+                value={tgCode}
+                onChange={(e) => setTgCode(e.target.value)}
+                placeholder="Код из бота (например: 1234)"
+                className="w-full px-4 py-3 rounded-xl text-white text-center tracking-widest text-lg outline-none"
+                style={{ background: "rgba(255,255,255,0.05)", border: "1px solid rgba(59,130,246,0.3)" }}
+                onKeyDown={(e) => e.key === "Enter" && handleConfirm()}
+              />
+              {error && <p className="text-red-400 text-xs mt-3 text-center">{error}</p>}
+              <button
+                onClick={handleConfirm}
+                disabled={loading}
+                className="w-full mt-4 py-3.5 rounded-xl font-bold text-black text-sm disabled:opacity-60"
+                style={{ background: "linear-gradient(135deg,#22d65a,#16a34a)" }}
+              >
+                {loading ? "Подключение..." : "Подтвердить"}
+              </button>
+              <button
+                onClick={() => { setTgStep(false); setError(""); }}
+                className="w-full mt-2 py-2 text-muted-foreground text-sm hover:text-white transition-colors"
+              >
+                ← Назад
+              </button>
+            </>
+          )}
         </div>
 
-        {/* Bottom tag */}
-        <p className="text-center mt-6 text-xs" style={{ color: 'rgba(255,255,255,0.15)' }}>
-          Нажимая кнопку, вы соглашаетесь с правилами платформы
+        <p className="text-center text-xs text-muted-foreground mt-4">
+          Используя платформу, вы соглашаетесь с{" "}
+          <span className="text-neon-green cursor-pointer hover:underline">условиями использования</span>
         </p>
       </div>
     </div>
   );
-};
-
-export default AuthPage;
+}
