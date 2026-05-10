@@ -1,346 +1,207 @@
-import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { getUser } from '@/lib/auth';
-import Icon from '@/components/ui/icon';
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { getUser } from "@/lib/auth";
+import { api } from "@/lib/api";
+import Icon from "@/components/ui/icon";
 
-interface GameCard {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  gradient: string;
-  glowClass: string;
-  badge?: string;
-}
-
-const GAMES: GameCard[] = [
-  {
-    id: 'slots',
-    name: 'Слоты',
-    description: 'Крути барабаны и срывай джекпот!',
-    icon: 'Rows3',
-    gradient: 'gradient-green',
-    glowClass: 'neon-glow-green',
-    badge: 'Популярно',
-  },
-  {
-    id: 'crash',
-    name: 'Краш',
-    description: 'Следи за графиком и выводи вовремя!',
-    icon: 'TrendingUp',
-    gradient: 'gradient-purple',
-    glowClass: 'neon-glow-purple',
-    badge: 'Горячо',
-  },
-  {
-    id: 'dice',
-    name: 'Кости',
-    description: 'Классические кости — угадай число!',
-    icon: 'Dices',
-    gradient: 'gradient-gold',
-    glowClass: 'neon-glow-gold',
-  },
-  {
-    id: 'roulette',
-    name: 'Рулетка',
-    description: 'Ставь на цвет или число — выигрывай!',
-    icon: 'Circle',
-    gradient: 'gradient-purple',
-    glowClass: 'neon-glow-purple',
-  },
+const LIVE_WINS = [
+  { user: "alex***", game: "Краш", amount: 4200, mult: "x8.4" },
+  { user: "pro_***", game: "Слоты", amount: 12500, mult: "x50" },
+  { user: "win***", game: "Рулетка", amount: 3600, mult: "x36" },
+  { user: "lucky_***", game: "Кости", amount: 550, mult: "x5.5" },
+  { user: "star***", game: "Краш", amount: 2100, mult: "x14.2" },
+  { user: "king***", game: "Слоты", amount: 7800, mult: "x25" },
 ];
 
-interface RecentWin {
-  username: string;
-  amount: number;
-  game: string;
-  time: string;
-}
-
-const RECENT_WINS: RecentWin[] = [
-  { username: 'Alex***', amount: 12500, game: 'Краш', time: '1 мин назад' },
-  { username: 'Маш***', amount: 3800, game: 'Слоты', time: '2 мин назад' },
-  { username: 'Den***', amount: 25000, game: 'Рулетка', time: '4 мин назад' },
-  { username: 'Kat***', amount: 750, game: 'Кости', time: '5 мин назад' },
-  { username: 'Igor***', amount: 8200, game: 'Краш', time: '7 мин назад' },
-  { username: 'Vol***', amount: 47000, game: 'Слоты', time: '9 мин назад' },
-  { username: 'Sar***', amount: 1900, game: 'Рулетка', time: '11 мин назад' },
-  { username: 'Max***', amount: 5600, game: 'Кости', time: '12 мин назад' },
+const GAMES_LIST = [
+  { key: "slots", name: "Слоты", icon: "🎰", desc: "До x50 множитель", color: "#ec4899", path: "/games?tab=slots" },
+  { key: "crash", name: "Краш", icon: "🚀", desc: "Авто-вывод на пике", color: "#22d65a", path: "/games?tab=crash" },
+  { key: "dice", name: "Кости", icon: "🎲", desc: "Угадай бросок", color: "#3b82f6", path: "/games?tab=dice" },
+  { key: "roulette", name: "Рулетка", icon: "🎡", desc: "Классика казино", color: "#f59e0b", path: "/games?tab=roulette" },
 ];
 
-const STAT_ITEMS = [
-  { label: 'Активных игроков', value: '2 847', icon: 'Users' },
-  { label: 'Выплачено сегодня', value: '1.4M ₽', icon: 'TrendingUp' },
-  { label: 'Игр сыграно', value: '94 210', icon: 'Gamepad2' },
-];
-
-const HomePage: React.FC = () => {
+export default function HomePage() {
   const navigate = useNavigate();
   const user = getUser();
-  const [tickerIndex, setTickerIndex] = useState(0);
-  const [visible, setVisible] = useState(false);
+  const [stats, setStats] = useState<{ total_games: number; wins: number } | null>(null);
+  const [history, setHistory] = useState<{ game_type: string; bet: number; result: number; multiplier: number; created_at: string }[]>([]);
+  const [ticker, setTicker] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setVisible(true), 50);
-    return () => clearTimeout(timer);
+    api.user.profile().then((d) => { if (d.stats) setStats(d.stats); });
+    api.user.history().then((d) => { if (d.games) setHistory(d.games.slice(0, 4)); });
+    const t = setInterval(() => setTicker((p) => (p + 1) % LIVE_WINS.length), 2800);
+    return () => clearInterval(t);
   }, []);
 
-  // Rotate live-wins ticker every 3 seconds
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTickerIndex((i) => (i + 1) % RECENT_WINS.length);
-    }, 3000);
-    return () => clearInterval(interval);
-  }, []);
-
-  const currentWin = RECENT_WINS[tickerIndex];
+  const winRate = stats ? (stats.total_games > 0 ? Math.round((stats.wins / stats.total_games) * 100) : 0) : 0;
 
   return (
-    <div className="min-h-screen px-4 py-6 md:px-8 md:py-10 max-w-6xl mx-auto">
-
-      {/* ── Hero ── */}
-      <section
-        className={`text-center mb-10 transition-all duration-700 ${
-          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-        }`}
+    <div className="space-y-6 animate-fade-in">
+      {/* Hero */}
+      <div
+        className="relative overflow-hidden rounded-2xl p-6 md:p-8"
+        style={{
+          background: "linear-gradient(135deg, rgba(34,214,90,0.12) 0%, rgba(168,85,247,0.08) 100%)",
+          border: "1px solid rgba(34,214,90,0.18)",
+        }}
       >
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full mb-4 text-xs font-semibold uppercase tracking-widest"
-          style={{ background: 'rgba(34,214,90,0.1)', border: '1px solid rgba(34,214,90,0.25)', color: 'var(--neon-green)' }}>
-          <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--neon-green)' }} />
-          Live — играют прямо сейчас
-        </div>
-
-        <h1
-          className="text-4xl md:text-6xl font-bold mb-3 leading-tight"
-          style={{ textShadow: '0 0 40px rgba(34,214,90,0.4)' }}
-        >
-          ДОБРО ПОЖАЛОВАТЬ{' '}
-          <span style={{ color: 'var(--neon-green)' }}>В CASINO</span>
-        </h1>
-        <p className="text-gray-400 text-base md:text-lg mb-6">
-          Лучшие игры, мгновенные выплаты, честный шанс
-        </p>
-
-        {/* Balance card */}
-        <div className="inline-flex items-center gap-4 px-6 py-4 rounded-2xl neon-glow-green"
-          style={{ background: 'rgba(34,214,90,0.07)', border: '1px solid rgba(34,214,90,0.25)' }}>
-          <div>
-            <p className="text-xs text-gray-500 uppercase tracking-wider mb-0.5">Ваш баланс</p>
-            <p
-              className="text-3xl font-bold"
-              style={{ color: 'var(--neon-green)', textShadow: '0 0 20px rgba(34,214,90,0.5)' }}
-            >
-              {(user?.balance ?? 0).toLocaleString('ru-RU', {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              })}{' '}
-              ₽
-            </p>
-          </div>
+        <div className="absolute right-4 top-2 text-7xl md:text-9xl opacity-10 animate-float pointer-events-none">🎮</div>
+        <p className="text-neon-green text-xs font-bold mb-2 tracking-widest uppercase">Добро пожаловать</p>
+        <h2 className="text-2xl md:text-3xl font-oswald font-bold text-white mb-1">
+          Привет, {user?.username}! 👋
+        </h2>
+        <p className="text-muted-foreground text-sm mb-5">Твой баланс готов к игре. Удачи сегодня!</p>
+        <div className="flex gap-3 flex-wrap">
           <button
-            onClick={() => navigate('/deposit')}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200"
+            onClick={() => navigate("/games")}
+            className="px-5 py-2.5 rounded-xl text-black font-bold text-sm transition-all hover:scale-105 active:scale-95"
+            style={{ background: "linear-gradient(135deg,#22d65a,#16a34a)" }}
+          >
+            Играть сейчас
+          </button>
+          <button
+            onClick={() => navigate("/deposit")}
+            className="px-5 py-2.5 rounded-xl font-bold text-sm transition-all hover:scale-105 active:scale-95"
             style={{
-              background: 'var(--neon-green)',
-              color: '#000',
-              boxShadow: '0 0 16px rgba(34,214,90,0.4)',
+              background: "rgba(255,255,255,0.08)",
+              color: "white",
+              border: "1px solid rgba(255,255,255,0.12)",
             }}
           >
-            <Icon name="Plus" size={16} />
-            Пополнить
+            Пополнить счёт
           </button>
         </div>
-      </section>
+      </div>
 
-      {/* ── Stats bar ── */}
-      <section
-        className={`grid grid-cols-3 gap-3 mb-10 transition-all duration-700 delay-100 ${
-          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-        }`}
-      >
-        {STAT_ITEMS.map((s) => (
+      {/* Stats */}
+      <div className="grid grid-cols-3 gap-3 md:gap-4">
+        {[
+          { label: "Баланс", value: `${(user?.balance ?? 0).toLocaleString("ru-RU", { maximumFractionDigits: 0 })} ₽`, icon: "Wallet", color: "#22d65a" },
+          { label: "Игр сыграно", value: stats ? String(stats.total_games) : "—", icon: "Trophy", color: "#a855f7" },
+          { label: "Побед", value: stats ? `${winRate}%` : "—", icon: "TrendingUp", color: "#f59e0b" },
+        ].map((s, i) => (
           <div
-            key={s.label}
-            className="glass-card rounded-xl py-4 px-3 text-center"
+            key={i}
+            className="glass-card rounded-2xl p-4 animate-slide-up"
+            style={{ animationDelay: `${i * 0.1}s` }}
           >
-            <Icon
-              name={s.icon}
-              size={20}
-              className="mx-auto mb-2"
-              style={{ color: 'var(--neon-green)' }}
-            />
-            <p
-              className="text-base md:text-xl font-bold"
-              style={{ color: 'var(--neon-green)' }}
+            <div
+              className="w-8 h-8 rounded-xl flex items-center justify-center mb-3"
+              style={{ background: `${s.color}18` }}
             >
+              <Icon name={s.icon} size={16} style={{ color: s.color }} />
+            </div>
+            <p className="text-muted-foreground text-xs mb-0.5">{s.label}</p>
+            <p className="font-oswald font-bold text-base md:text-lg" style={{ color: s.color }}>
               {s.value}
             </p>
-            <p className="text-xs text-gray-500 mt-0.5 hidden sm:block">{s.label}</p>
           </div>
         ))}
-      </section>
+      </div>
 
-      {/* ── Game cards ── */}
-      <section className="mb-10">
-        <div className="flex items-center justify-between mb-5">
-          <h2 className="text-2xl font-bold text-white">Игры</h2>
-          <button
-            onClick={() => navigate('/games')}
-            className="flex items-center gap-1.5 text-sm font-medium transition-colors"
-            style={{ color: 'var(--neon-green)' }}
-          >
-            Все игры
-            <Icon name="ChevronRight" size={16} />
+      {/* Games grid */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-oswald font-bold text-lg">🎮 Игры</h3>
+          <button onClick={() => navigate("/games")} className="text-neon-green text-sm hover:underline">
+            Все игры →
           </button>
         </div>
-
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          {GAMES.map((game, index) => (
-            <div
-              key={game.id}
-              className={`glass-card rounded-2xl overflow-hidden transition-all duration-700 cursor-pointer group ${
-                visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
-              }`}
-              style={{ transitionDelay: `${150 + index * 80}ms` }}
-              onClick={() => navigate('/games')}
+        <div className="grid grid-cols-2 gap-3 md:gap-4">
+          {GAMES_LIST.map((g, i) => (
+            <button
+              key={g.key}
+              onClick={() => navigate(g.path)}
+              className="glass-card rounded-2xl p-4 text-left transition-all hover:scale-[1.02] active:scale-[0.98] group animate-slide-up"
+              style={{ animationDelay: `${i * 0.08}s`, borderColor: `${g.color}25` }}
             >
-              {/* Card top gradient strip */}
-              <div className={`${game.gradient} p-6 flex flex-col items-center`}>
-                <div className="relative animate-float">
-                  <Icon name={game.icon} size={48} color="white" />
-                </div>
-                {game.badge && (
-                  <span className="mt-2 text-xs font-bold px-2 py-0.5 rounded-full bg-black/30 text-white uppercase tracking-wider">
-                    {game.badge}
-                  </span>
-                )}
+              <span className="text-4xl block mb-3 group-hover:scale-110 transition-transform duration-300">
+                {g.icon}
+              </span>
+              <p className="text-white font-bold">{g.name}</p>
+              <p className="text-muted-foreground text-xs mt-0.5">{g.desc}</p>
+              <div
+                className="mt-3 w-full py-1.5 rounded-lg text-xs font-bold text-center"
+                style={{ background: `${g.color}18`, color: g.color }}
+              >
+                Играть
               </div>
-
-              {/* Card body */}
-              <div className="p-4">
-                <h3 className="text-lg font-bold text-white mb-1">{game.name}</h3>
-                <p className="text-xs text-gray-400 mb-4 leading-relaxed">{game.description}</p>
-                <button
-                  onClick={(e) => { e.stopPropagation(); navigate('/games'); }}
-                  className={`w-full py-2.5 rounded-xl text-sm font-bold transition-all duration-200 ${game.glowClass} group-hover:scale-105`}
-                  style={{ background: 'rgba(255,255,255,0.08)', color: '#fff', border: '1px solid rgba(255,255,255,0.1)' }}
-                >
-                  Играть
-                </button>
-              </div>
-            </div>
+            </button>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* ── Live wins ticker ── */}
-      <section
-        className={`transition-all duration-700 delay-500 ${
-          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-        }`}
+      {/* Live wins ticker */}
+      <div
+        className="rounded-2xl p-4"
+        style={{ background: "rgba(34,214,90,0.05)", border: "1px solid rgba(34,214,90,0.1)" }}
       >
-        <div className="flex items-center gap-3 mb-4">
-          <Icon name="Flame" size={18} style={{ color: 'var(--neon-gold)' }} />
-          <h2 className="text-lg font-bold text-white">Последние выигрыши</h2>
-          <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full font-semibold"
-            style={{ background: 'rgba(245,158,11,0.15)', color: 'var(--neon-gold)', border: '1px solid rgba(245,158,11,0.25)' }}>
-            <span className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: 'var(--neon-gold)' }} />
-            Live
-          </span>
+        <div className="flex items-center gap-2 mb-3">
+          <div className="w-2 h-2 rounded-full bg-neon-green animate-pulse" />
+          <p className="text-neon-green text-xs font-bold uppercase tracking-widest">Live победы</p>
         </div>
-
-        {/* Highlighted win (animated) */}
-        <div
-          key={tickerIndex}
-          className="glass-card rounded-xl px-5 py-4 mb-3 flex items-center gap-4 animate-fade-in neon-glow-gold"
-        >
-          <div
-            className="flex items-center justify-center w-10 h-10 rounded-full shrink-0"
-            style={{ background: 'rgba(245,158,11,0.15)' }}
-          >
-            <Icon name="Trophy" size={20} style={{ color: 'var(--neon-gold)' }} />
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">
-              <span style={{ color: 'var(--neon-gold)' }}>{currentWin.username}</span>
-              {' '}выиграл в{' '}
-              <span className="text-gray-300">{currentWin.game}</span>
-            </p>
-            <p className="text-xs text-gray-500">{currentWin.time}</p>
-          </div>
-          <p
-            className="text-lg font-bold shrink-0"
-            style={{ color: 'var(--neon-gold)' }}
-          >
-            +{currentWin.amount.toLocaleString('ru-RU')} ₽
-          </p>
-        </div>
-
-        {/* All wins grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {RECENT_WINS.map((win, i) => (
+        <div className="relative h-7 overflow-hidden">
+          {LIVE_WINS.map((w, i) => (
             <div
               key={i}
-              className="glass-card rounded-xl px-4 py-3 flex items-center gap-3 transition-all duration-200 hover:bg-white/5"
+              className="absolute inset-0 flex items-center justify-between transition-all duration-500"
+              style={{ opacity: i === ticker ? 1 : 0, transform: `translateY(${(i - ticker) * 30}px)` }}
             >
-              <div
-                className="flex items-center justify-center w-8 h-8 rounded-full shrink-0 text-xs font-bold"
-                style={{ background: 'rgba(34,214,90,0.1)', color: 'var(--neon-green)' }}
-              >
-                {i + 1}
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-white truncate">{win.username}</p>
-                <p className="text-xs text-gray-500">{win.game} · {win.time}</p>
-              </div>
-              <p
-                className="text-sm font-bold shrink-0"
-                style={{ color: 'var(--neon-green)' }}
-              >
-                +{win.amount.toLocaleString('ru-RU')} ₽
-              </p>
+              <span className="text-muted-foreground text-sm">
+                <span className="text-white font-semibold">{w.user}</span> выиграл в {w.game}
+              </span>
+              <span className="text-neon-green font-bold text-sm">+{w.amount.toLocaleString()} ₽</span>
             </div>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* ── Promo banner ── */}
-      <section
-        className={`mt-10 transition-all duration-700 delay-700 ${
-          visible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-6'
-        }`}
-      >
-        <div
-          className="rounded-2xl p-6 flex flex-col sm:flex-row items-center gap-4 neon-glow-green"
-          style={{
-            background: 'linear-gradient(135deg, rgba(34,214,90,0.12) 0%, rgba(168,85,247,0.08) 100%)',
-            border: '1px solid rgba(34,214,90,0.2)',
-          }}
-        >
-          <div className="text-4xl animate-float">🎁</div>
-          <div className="flex-1 text-center sm:text-left">
-            <h3 className="text-xl font-bold text-white mb-1">
-              Бонус на первое пополнение
-            </h3>
-            <p className="text-gray-400 text-sm">
-              Пополните счёт и получите 100% бонус до 10 000 ₽
-            </p>
+      {/* Last games */}
+      {history.length > 0 && (
+        <div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-white font-oswald font-bold text-lg">📊 Последние игры</h3>
+            <button onClick={() => navigate("/history")} className="text-neon-green text-sm hover:underline">
+              Вся история →
+            </button>
           </div>
-          <button
-            onClick={() => navigate('/deposit')}
-            className="shrink-0 px-6 py-3 rounded-xl font-bold text-sm transition-all duration-200"
-            style={{
-              background: 'var(--neon-green)',
-              color: '#000',
-              boxShadow: '0 0 20px rgba(34,214,90,0.4)',
-            }}
-          >
-            Пополнить
-          </button>
+          <div className="glass-card rounded-2xl overflow-hidden">
+            {history.map((h, i) => {
+              const win = h.result > 0;
+              const emoji = { slots: "🎰", crash: "🚀", dice: "🎲", roulette: "🎡" }[h.game_type] ?? "🎮";
+              return (
+                <div
+                  key={i}
+                  className="flex items-center justify-between px-5 py-3.5"
+                  style={{ borderBottom: i < history.length - 1 ? "1px solid rgba(255,255,255,0.04)" : "none" }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div
+                      className="w-8 h-8 rounded-lg flex items-center justify-center text-base"
+                      style={{ background: win ? "rgba(34,214,90,0.1)" : "rgba(239,68,68,0.1)" }}
+                    >
+                      {emoji}
+                    </div>
+                    <div>
+                      <p className="text-white text-sm font-semibold capitalize">{h.game_type}</p>
+                      <p className="text-muted-foreground text-xs">
+                        {new Date(h.created_at).toLocaleString("ru-RU", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className={`font-bold text-sm ${win ? "text-neon-green" : "text-red-400"}`}>
+                      {win ? "+" : ""}{(h.result).toFixed(2)} ₽
+                    </p>
+                    <p className="text-muted-foreground text-xs">x{Number(h.multiplier).toFixed(2)}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
-      </section>
+      )}
     </div>
   );
-};
-
-export default HomePage;
+}
