@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Payments OPTIONS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

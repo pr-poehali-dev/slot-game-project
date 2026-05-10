@@ -1,0 +1,10 @@
+{
+  "tests": [
+    {
+      "name": "Auth root OPTIONS",
+      "method": "OPTIONS",
+      "path": "/",
+      "expectedStatus": 200
+    }
+  ]
+}

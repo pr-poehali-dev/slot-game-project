@@ -1,0 +1,7 @@
+{
+  "games": "https://functions.poehali.dev/dcdc852d-8d91-4328-bdfc-0bce06546ce2",
+  "payments": "https://functions.poehali.dev/3a0e0fdc-0196-4cae-bbd7-e590776ad031",
+  "auth": "https://functions.poehali.dev/b4fa0ba5-044c-495d-9dec-17d4c9cd614f",
+  "user": "https://functions.poehali.dev/0beec684-b069-472e-b97f-d393006a493b",
+  "admin": "https://functions.poehali.dev/99a66507-a6bf-4ad1-9b45-9249e8e5a194"
+}
